@@ -1,0 +1,17 @@
+{
+	"name": "api-webhook",
+	"version": "1.0.0",
+	"main": "simpleApi.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1",
+		"start": "node simpleApi.js"
+	},
+	"author": "",
+	"license": "ISC",
+	"description": "",
+	"dependencies": {
+		"axios": "^1.7.9",
+		"cors": "^2.8.5",
+		"express": "^4.21.2"
+	}
+}
