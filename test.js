@@ -16,13 +16,14 @@ app.use(express.json());
 app.post("/", async (req, res) => {
 	console.log("Received payload:", JSON.stringify(req.body, null, 2));
 
-	// Determine handler based on target.className
+	// Use target.className to determine the handler to use
 	const targetClassName = extractVariable(req.body, "target.className");
 
 	try {
 		if (targetClassName === "VirtualMachine" || targetClassName === "VirtualVolume") {
 			await handleScaleAction(req.body, targetClassName);
 		} else {
+			// Use a fallback handler for unimplemented target types
 			await handleNotImplemented(req.body, targetClassName);
 		}
 		res.status(200).send("Webhook processed successfully.");
@@ -42,8 +43,6 @@ async function handleScaleAction(payload, targetClassName) {
 	} else if (targetClassName === "VirtualVolume") {
 		messageTitle = "Turbonomic Scale Action - Volume";
 	}
-
-	const costText = getCost(payload, targetClassName);
 
 	const message = {
 		cardsV2: [
@@ -79,7 +78,7 @@ async function handleScaleAction(payload, targetClassName) {
 								},
 								{
 									textParagraph: {
-										text: `<b>Cost:</b> ${costText}`,
+										text: `<b>Cost:</b> ${extractVariable(payload, "stats[0].value")} ${extractVariable(payload, "stats[0].units")}`,
 									},
 								},
 								{
@@ -121,6 +120,7 @@ async function handleNotImplemented(payload, targetClassName) {
 	const actionId = extractVariable(payload, "uuid");
 	const actionUrl = `${TURBONOMIC_BASE_URL}/app/#/view/main/action/${actionId}`;
 
+	// Build a message for target types that are not yet handled
 	const message = {
 		cardsV2: [
 			{
@@ -160,36 +160,6 @@ async function handleNotImplemented(payload, targetClassName) {
 		headers: { "Content-Type": "application/json" },
 	});
 	console.log("Unhandled action forwarded to Google Chat:", response.data);
-}
-
-function getCost(payload, targetClassName) {
-	let value = "N/A";
-	let units = "N/A";
-
-	if (targetClassName === "VirtualMachine") {
-		if (payload.stats && Array.isArray(payload.stats)) {
-			const stat = payload.stats.find((s) => s.name === "costPrice") || payload.stats[0];
-			if (stat) {
-				value = stat.value;
-				units = stat.units;
-			}
-		}
-	} else if (targetClassName === "VirtualVolume") {
-		if (payload.virtualDisks && Array.isArray(payload.virtualDisks)) {
-			// Iterate over virtualDisks to find a costPrice stat
-			for (const disk of payload.virtualDisks) {
-				if (disk.stats && Array.isArray(disk.stats)) {
-					const stat = disk.stats.find((s) => s.name === "costPrice");
-					if (stat) {
-						value = stat.value;
-						units = stat.units;
-						break;
-					}
-				}
-			}
-		}
-	}
-	return `${value} ${units}`;
 }
 
 function extractVariable(obj, path) {
